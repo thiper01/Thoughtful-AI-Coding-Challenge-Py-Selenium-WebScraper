@@ -243,7 +243,8 @@ if __name__ == "__main__":
     logging.basicConfig(
         filename=os.path.join(output_path, 'news_scraper.log'),
         level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s'
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        force=True
     )
 
     scraper = NewsScraper(search_phrase, retrieve_months,
