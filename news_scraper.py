@@ -6,8 +6,9 @@ import time
 from datetime import datetime, timedelta
 
 from RPA.Browser.Selenium import Selenium
+from RPA.Robocorp.WorkItems import WorkItems
 from SeleniumLibrary.errors import ElementNotFound
-from SeleniumLibrary import keywords
+
 
 class CSVHandler:
     def __init__(self, csv_path):
@@ -54,7 +55,7 @@ class NewsScraper(Selenium):
 
     def setup_browser(self):
         try:
-            self.auto_close = False
+            # self.auto_close = False
             self.set_screenshot_directory(self.output_path)
             self.open_available_browser(
                 "https://www.latimes.com", options="page_load_strategy='eager'")
@@ -230,10 +231,13 @@ class NewsScraper(Selenium):
 
 
 if __name__ == "__main__":
-    search_phrase = "test"
-    category = ""
-    retrieve_months = 0
-    output_path = "/mnt/e/Documentos/GitHub/Thoughtful-AI-Coding-Challenge/output"
+    test = WorkItems()
+    test.get_input_work_item()
+    configs = test.get_work_item_variables()
+    search_phrase = configs["search_phrase"]
+    category = configs["category"]
+    retrieve_months = configs["retrieve_months"]
+    output_path = configs["output_path"]
 
     # Set up logging
     logging.basicConfig(
