@@ -7,14 +7,7 @@ from datetime import datetime, timedelta
 
 from RPA.Browser.Selenium import Selenium
 from SeleniumLibrary.errors import ElementNotFound
-
-# Set up logging
-logging.basicConfig(
-    filename='news_scraper.log',
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-
+from SeleniumLibrary import keywords
 
 class CSVHandler:
     def __init__(self, csv_path):
@@ -49,20 +42,21 @@ class Cleaner:
             logging.error(f"Error occurred while deleting files: {e}")
 
 
-class NewsScraper:
+class NewsScraper(Selenium):
     def __init__(self, search_phrase, retrieve_months, category="", output_path="output"):
         self.search_phrase = search_phrase
         self.retrieve_months = retrieve_months if retrieve_months > 0 else 1
         self.category = category
         self.output_path = output_path
-        self.lib = Selenium()
+        # self.lib = Selenium()
         self.csv_data = []
+        Selenium.__init__(self)
 
     def setup_browser(self):
         try:
-            self.lib.auto_close = False
-            self.lib.set_screenshot_directory(self.output_path)
-            self.lib.open_available_browser(
+            self.auto_close = False
+            self.set_screenshot_directory(self.output_path)
+            self.open_available_browser(
                 "https://www.latimes.com", options="page_load_strategy='eager'")
             logging.info("Browser setup complete.")
         except Exception as e:
@@ -70,28 +64,28 @@ class NewsScraper:
 
     def search_news(self):
         try:
-            self.lib.wait_and_click_button("data:element:search-button")
-            self.lib.input_text_when_element_is_visible(
+            self.wait_and_click_button("data:element:search-button")
+            self.input_text_when_element_is_visible(
                 "name:q", self.search_phrase + "\n")
             logging.info(f"Search initiated for phrase: {self.search_phrase}")
             time.sleep(1)
 
             if self.category:
-                self.lib.wait_until_element_is_visible(
+                self.wait_until_element_is_visible(
                     "class:search-filter >> class:button")
-                self.lib.click_button_when_visible(
+                self.click_button_when_visible(
                     "class:search-filter >> class:button")
                 logging.info(f"Category filter applied: {self.category}")
                 while True:
                     try:
 
-                        categories = self.lib.get_webelements(
+                        categories = self.get_webelements(
                             "data:name:Topics >> tag:label")
                         for i in categories:
-                            if self.lib.does_element_contain(i, self.category, ignore_case=True):
-                                checkbox = self.lib.get_webelement(
+                            if self.does_element_contain(i, self.category, ignore_case=True):
+                                checkbox = self.get_webelement(
                                     "class:checkbox-input-element", i)
-                                self.lib.click_element(checkbox)
+                                self.click_element(checkbox)
                                 break
                         time.sleep(1)
                     except Exception as e:
@@ -100,8 +94,8 @@ class NewsScraper:
                     else:
                         break
 
-            self.lib.wait_until_element_is_visible("class:select-input")
-            self.lib.select_from_list_by_value("class:select-input", "1")
+            self.wait_until_element_is_visible("class:select-input")
+            self.select_from_list_by_value("class:select-input", "1")
             time.sleep(1)
         except Exception as e:
             logging.error(f"Error during search: {e}")
@@ -116,16 +110,16 @@ class NewsScraper:
         while in_time_range:
             while True:
                 try:
-                    self.lib.wait_until_page_contains_element(
+                    self.wait_until_page_contains_element(
                         "class:promo-wrapper")
-                    result_list = self.lib.get_webelements(
+                    result_list = self.get_webelements(
                         "class:promo-wrapper")
 
                     for i in result_list:
-                        title = self.lib.get_text(
-                            self.lib.get_webelement("class:promo-title", i))
-                        description = self.lib.get_text(
-                            self.lib.get_webelement("class:promo-description", i))
+                        title = self.get_text(
+                            self.get_webelement("class:promo-title", i))
+                        description = self.get_text(
+                            self.get_webelement("class:promo-description", i))
                         date = self.get_article_date(i, current_date)
 
                         if date <= news_date_range:
@@ -157,7 +151,7 @@ class NewsScraper:
 
     def get_article_date(self, article_element, current_date):
         try:
-            date_string = self.lib.get_text(self.lib.get_webelement(
+            date_string = self.get_text(self.get_webelement(
                 "class:promo-timestamp", article_element)).replace(".", "").replace(",", "")
             if len(re.search("[A-z]*", date_string).group()) > 3:
                 return datetime.strptime(date_string, "%B %d %Y")
@@ -172,7 +166,7 @@ class NewsScraper:
         try:
             if self.detect_ad():
                 self.close_ad()
-            return self.lib.capture_element_screenshot(self.lib.get_webelement("class:promo-media", article_element))
+            return self.capture_element_screenshot(self.get_webelement("class:promo-media", article_element))
         except ElementNotFound:
             logging.warning("Screenshot capture failed, element not found.")
             return ""
@@ -192,14 +186,14 @@ class NewsScraper:
     def go_to_next_page(self):
         while True:
             try:
-                next_page = self.lib.get_webelement(
+                next_page = self.get_webelement(
                     "class:search-results-module-next-page")
                 try:
-                    self.lib.get_webelement("tag:a", next_page)
+                    self.get_webelement("tag:a", next_page)
                 except:
                     logging.info("No next page available, ending scrape.")
                     return False
-                self.lib.click_element_when_visible(next_page)
+                self.click_element_when_visible(next_page)
                 return True
             except Exception as e:
                 if self.detect_ad():
@@ -212,19 +206,19 @@ class NewsScraper:
                     return False
 
     def detect_ad(self):
-        result = self.lib.is_element_enabled(
+        result = self.is_element_enabled(
             "name:metering-bottompanel", missing_ok=True)
         if result:
             logging.info("Ad detected!")
-        return self.lib.is_element_enabled("name:metering-bottompanel", missing_ok=True)
+        return self.is_element_enabled("name:metering-bottompanel", missing_ok=True)
 
     def close_ad(self):
         try:
-            shadow_root = self.lib.get_webelement(
+            shadow_root = self.get_webelement(
                 "name:metering-bottompanel", shadow=True)
-            close_ad = self.lib.get_webelement(
+            close_ad = self.get_webelement(
                 "class:met-flyout-close", shadow_root)
-            self.lib.click_element(close_ad)
+            self.click_element(close_ad)
         except Exception as e:
             logging.error(f"Failed to close ad: {e}")
         else:
@@ -240,6 +234,13 @@ if __name__ == "__main__":
     category = ""
     retrieve_months = 0
     output_path = "/mnt/e/Documentos/GitHub/Thoughtful-AI-Coding-Challenge/output"
+
+    # Set up logging
+    logging.basicConfig(
+        filename=os.path.join(output_path, 'news_scraper.log'),
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s'
+    )
 
     scraper = NewsScraper(search_phrase, retrieve_months,
                           category, output_path)
